@@ -26,21 +26,21 @@ def _importable(name: str) -> bool:
 
 @functools.cache
 def is_flashinfer_installed() -> bool:
-    if is_rocm():
+    if is_rocm() or not supports_native_kernels():
         return False
     return _importable("flashinfer")
 
 
 @functools.cache
 def is_sgl_kernel_installed() -> bool:
-    if is_rocm():
+    if is_rocm() or not supports_native_kernels():
         return False
     return _importable("sgl_kernel")
 
 
 @functools.cache
 def is_vllm_installed() -> bool:
-    if is_rocm():
+    if is_rocm() or not supports_native_kernels():
         return False
     return _importable("vllm")
 
@@ -52,6 +52,17 @@ def device_capability() -> tuple[int, int]:
         return (0, 0)
     major, minor = torch.cuda.get_device_capability()
     return (int(major), int(minor))
+
+
+@functools.cache
+def supports_native_kernels() -> bool:
+    """Whether this GPU can run the optional native kernel packages.
+
+    flashinfer, sglang-kernel and vllm ship Ampere-and-newer cubins, so probing
+    them by importability on an older GPU (Turing, cc 7.5) selects kernels that
+    fail at launch instead of using the Triton fallbacks.
+    """
+    return device_capability() >= (8, 0)
 
 
 @functools.cache
